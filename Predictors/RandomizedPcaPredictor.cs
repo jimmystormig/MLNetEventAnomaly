@@ -29,7 +29,7 @@ namespace MLNetEventAnomaly.Predictors
                 .Append(new RandomizedPcaTrainer(_ml, "Features", rank: 2, oversampling: 10));
 
             var data = File
-                .ReadAllLines("maindoorstates.csv")
+                .ReadAllLines("training_data/maindoorstates.csv")
                 .Select(row => DateTime.Parse(row, null, DateTimeStyles.AssumeUniversal))
                 .Select(date => new RandomizedPcaPredictorData((int) date.DayOfWeek, date.Hour))
                 .ToList();

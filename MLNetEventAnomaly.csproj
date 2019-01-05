@@ -12,4 +12,11 @@
     <PackageReference Include="microsoft.ml.timeseries" Version="0.8.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Remove="training_data\maindoorstates.csv" />
+    <Content Include="training_data\maindoorstates.csv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>

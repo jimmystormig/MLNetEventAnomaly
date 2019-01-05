@@ -1,0 +1,15 @@
+FROM microsoft/dotnet as build
+
+WORKDIR /app
+
+COPY . /app
+RUN dotnet restore
+RUN dotnet publish -c Debug -o out
+
+EXPOSE 80
+VOLUME [ "/app/data" ]
+
+FROM microsoft/dotnet as runtime
+WORKDIR /app
+COPY --from=build /app/out/ ./
+ENTRYPOINT ["dotnet", "MLNetEventAnomaly.dll"]
