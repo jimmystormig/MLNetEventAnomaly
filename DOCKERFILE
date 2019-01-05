@@ -12,4 +12,7 @@ VOLUME [ "/app/data" ]
 FROM microsoft/dotnet as runtime
 WORKDIR /app
 COPY --from=build /app/out/ ./
+COPY --from=build /app/data/ ./data
 ENTRYPOINT ["dotnet", "MLNetEventAnomaly.dll"]
+
+HEALTHCHECK CMD curl -f http://localhost/healthy || exit 1
