@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Globalization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -45,7 +45,7 @@ namespace EventAnomaly
                         switch (algorithm)
                         {
                             case "ssachangepoint":
-                                var ssaChangePointPrediction = ssaChangePointPredictor.Predict(timestamp);
+                                var ssaChangePointPrediction = ssaChangePointPredictor.Predict(timestamp, int.Parse(predictPost.Query["dooropenings"]));
                                 await context.Response.WriteAsync(JsonConvert.SerializeObject(ssaChangePointPrediction));
                                 break;
                             case "randomizedpca":

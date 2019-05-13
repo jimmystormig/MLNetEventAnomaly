@@ -10,7 +10,6 @@ namespace MLNetEventAnomaly.Predictors
         {
             DayOfWeek = dayOfWeek;
             Hour = hour;
-            Label = hour != 15;
         }
     }
 }

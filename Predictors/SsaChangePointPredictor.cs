@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
+using System.Linq;
 using Microsoft.ML;
 using Microsoft.ML.Data;
 using Microsoft.ML.Runtime.Api;
@@ -25,12 +27,12 @@ namespace MLNetEventAnomaly.Predictors
             try
             {
                 using (var file = File.OpenRead(ModelPath))
-                    if (file != null && file.Length > 0)
-                    {
-                        var model = TransformerChain.LoadFrom(_ml, file);
-                        _timeSeriesPredictionFunction = model.CreateTimeSeriesPredictionFunction<SsaChangePointPredictorData, SsaChangePointPredictorPrediction>(_ml);
-                        return;
-                    }
+                if (file != null && file.Length > 0)
+                {
+                    var model = TransformerChain.LoadFrom(_ml, file);
+                    _timeSeriesPredictionFunction = model.CreateTimeSeriesPredictionFunction<SsaChangePointPredictorData, SsaChangePointPredictorPrediction>(_ml);
+                    return;
+                }
             }
             catch (FileNotFoundException) { }
         
@@ -39,29 +41,28 @@ namespace MLNetEventAnomaly.Predictors
             const int numberOfSeasonsInTraining = 5;
             const int maxTrainingSize = numberOfSeasonsInTraining * seasonalitySize;
 
-            var pipeline = new SsaChangePointEstimator(_ml, new SsaChangePointDetector.Arguments()
-            {
-                Confidence = 95,
-                Source = "MinutesSinceMidnight",
-                Name = "Change",
-                ChangeHistoryLength = changeHistorySize,
-                TrainingWindowSize = maxTrainingSize,
-                SeasonalWindowSize = seasonalitySize
-            });
+            var data = File
+                .ReadAllLines("training_data/maindoorstates.csv")
+                .Select(row => row.Split(';'))
+                .Select(row => new { Date = DateTime.Parse(row[0], null, DateTimeStyles.AssumeUniversal), Value = int.Parse(row[1]) })
+                .Select(row => new SsaChangePointPredictorData((int) row.Date.DayOfWeek, row.Date.Hour, row.Value))
+                .ToList();
 
-            var data = new List<SsaChangePointPredictorData>();
-
-            for (int j = 0; j < numberOfSeasonsInTraining; j++)
-            for (int i = 0; i < seasonalitySize; i++)
-                data.Add(new SsaChangePointPredictorData(((i + 1) % 7) - 1, 420));
-
-            _timeSeriesPredictionFunction = pipeline
+            _timeSeriesPredictionFunction = new SsaChangePointEstimator(_ml, new SsaChangePointDetector.Arguments()
+                {
+                    Confidence = 95,
+                    Source = nameof(SsaChangePointPredictorData.DoorOpenings),
+                    Name = nameof(SsaChangePointPredictorPrediction.Change),
+                    ChangeHistoryLength = changeHistorySize,
+                    TrainingWindowSize = maxTrainingSize,
+                    SeasonalWindowSize = seasonalitySize
+                })
                 .Fit(_ml.CreateStreamingDataView(data))
                 .CreateTimeSeriesPredictionFunction<SsaChangePointPredictorData, SsaChangePointPredictorPrediction>(_ml);
         }
 
-        public SsaChangePointPredictorPrediction Predict(DateTime timestamp) => 
-            _timeSeriesPredictionFunction.Predict(new SsaChangePointPredictorData((int)timestamp.DayOfWeek, (float)timestamp.TimeOfDay.TotalMinutes));
+        public SsaChangePointPredictorPrediction Predict(DateTime timestamp, int doorOpenings) => 
+            _timeSeriesPredictionFunction.Predict(new SsaChangePointPredictorData((int)timestamp.DayOfWeek, timestamp.Hour, doorOpenings));
 
         public void SaveModel() => 
             _timeSeriesPredictionFunction.CheckPoint(_ml, ModelPath);

@@ -12,7 +12,7 @@ namespace MLNetEventAnomaly.Predictors
 {
     public class RandomizedPcaPredictor
     {
-        private const string ModelPath = "data/RandomizedPcaPredictorModel.zip";
+        private const string modelPath = "data/RandomizedPcaPredictorModel.zip";
         private readonly MLContext _ml;
         private PredictionFunction<RandomizedPcaPredictorData, RandomizedPcaPredictorPrediction> _predictionFunction;
 
@@ -30,28 +30,27 @@ namespace MLNetEventAnomaly.Predictors
 
             var data = File
                 .ReadAllLines("training_data/maindoorstates.csv")
-                .Select(row => DateTime.Parse(row, null, DateTimeStyles.AssumeUniversal))
-                .Select(date => new RandomizedPcaPredictorData((int) date.DayOfWeek, date.Hour))
+                .Select(row => row.Split(';'))
+                .Select(row => new { Date = DateTime.Parse(row[0], null, DateTimeStyles.AssumeUniversal), Value = int.Parse(row[1]) })
+                .Select(row => new RandomizedPcaPredictorData((int) row.Date.DayOfWeek, row.Date.Hour) { Label = row.Value > 0 })
                 .ToList();
 
             var transformer = pipeline.Fit(_ml.CreateStreamingDataView(data));
 
-            using (var file = File.OpenWrite(ModelPath))
-            transformer.SaveTo(_ml, file);
+            using (var file = File.OpenWrite(modelPath))
+                transformer.SaveTo(_ml, file);
         }
 
         public void Initialize()
         {
-            using (var file = File.OpenRead(ModelPath))
+            using (var file = File.OpenRead(modelPath))
             {
                 var model = TransformerChain.LoadFrom(_ml, file);
                 _predictionFunction = model.MakePredictionFunction<RandomizedPcaPredictorData, RandomizedPcaPredictorPrediction>(_ml);
             }          
         }
 
-        public RandomizedPcaPredictorPrediction Predict(DateTime dateTime)
-        {
-            return _predictionFunction.Predict(new RandomizedPcaPredictorData((int)dateTime.DayOfWeek, dateTime.Hour));
-        }
+        public RandomizedPcaPredictorPrediction Predict(DateTime dateTime) => 
+            _predictionFunction.Predict(new RandomizedPcaPredictorData((int)dateTime.DayOfWeek, dateTime.Hour));
     }
  }

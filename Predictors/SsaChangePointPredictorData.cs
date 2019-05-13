@@ -3,12 +3,14 @@ namespace MLNetEventAnomaly.Predictors
     public sealed class SsaChangePointPredictorData
     {
         public int DayOfWeek;
-        public float MinutesSinceMidnight;
+        public int Hour;
+        public float DoorOpenings;
 
-        public SsaChangePointPredictorData(int dayOfWeek, float minutesSinceMidnight)
+        public SsaChangePointPredictorData(int dayOfWeek, int hour, int doorOpenings)
         {
             DayOfWeek = dayOfWeek;
-            MinutesSinceMidnight = minutesSinceMidnight;
+            Hour = hour;
+            DoorOpenings = doorOpenings;
         }
     }
 }
