@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Globalization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -28,7 +28,7 @@ namespace EventAnomaly
             var ssaChangePointPredictor = new SsaChangePointPredictor();
             ssaChangePointPredictor.Initialize();
 
-            applicationLifetime.ApplicationStopping.Register(() =>
+            applicationLifetime.ApplicationStopped.Register(() =>
             {
                 ssaChangePointPredictor.SaveModel();
             });
