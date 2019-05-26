@@ -4,11 +4,10 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
-using MLNetEventAnomaly;
 using MLNetEventAnomaly.Predictors;
 using Newtonsoft.Json;
 
-namespace EventAnomaly
+namespace MLNetEventAnomaly
 {
     public class Startup
     {
@@ -21,10 +20,6 @@ namespace EventAnomaly
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, IApplicationLifetime applicationLifetime)
         {
-            var randomizedPcaPredictor = new RandomizedPcaPredictor();
-            randomizedPcaPredictor.Train();
-            randomizedPcaPredictor.Initialize();
-            
             var ssaChangePointPredictor = new SsaChangePointPredictor();
             ssaChangePointPredictor.Initialize();
 
@@ -48,12 +43,6 @@ namespace EventAnomaly
                                 var ssaChangePointPrediction = ssaChangePointPredictor.Predict(timestamp, int.Parse(predictPost.Query["dooropenings"]));
                                 await context.Response.WriteAsync(JsonConvert.SerializeObject(ssaChangePointPrediction));
                                 break;
-                            case "randomizedpca":
-                                var randomizedPcaPredictorPrediction = randomizedPcaPredictor.Predict(timestamp);
-                                await context.Response.WriteAsync(JsonConvert.SerializeObject(randomizedPcaPredictorPrediction));
-                                break;
-                            default:
-                                throw new ArgumentOutOfRangeException("algorithm", algorithm, "Invalid algorithm");
                         }
                         break;
                     default:

@@ -1,13 +1,9 @@
 using System;
-using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using Microsoft.ML;
-using Microsoft.ML.Data;
-using Microsoft.ML.Runtime.Api;
-using Microsoft.ML.Runtime.TimeSeriesProcessing;
-using Microsoft.ML.TimeSeries;
+using Microsoft.ML.Transforms.TimeSeries;
 
 namespace MLNetEventAnomaly.Predictors
 {
@@ -19,7 +15,7 @@ namespace MLNetEventAnomaly.Predictors
     
         public SsaChangePointPredictor()
         {
-            _ml = new MLContext(seed: 1, conc: 1);
+            _ml = new MLContext();
         }
     
         public void Initialize()
@@ -27,19 +23,18 @@ namespace MLNetEventAnomaly.Predictors
             try
             {
                 using (var file = File.OpenRead(ModelPath))
-                if (file != null && file.Length > 0)
-                {
-                    var model = TransformerChain.LoadFrom(_ml, file);
-                    _timeSeriesPredictionFunction = model.CreateTimeSeriesPredictionFunction<SsaChangePointPredictorData, SsaChangePointPredictorPrediction>(_ml);
-                    return;
-                }
+                    if (file != null && file.Length > 0)
+                    {
+                        var model = _ml.Model.Load(file, out var schema);
+                        _timeSeriesPredictionFunction = model.CreateTimeSeriesPredictionFunction<SsaChangePointPredictorData, SsaChangePointPredictorPrediction>(_ml);
+                        return;
+                    }
             }
             catch (FileNotFoundException) { }
         
-            const int changeHistorySize = 10;
-            const int seasonalitySize = 10;
-            const int numberOfSeasonsInTraining = 5;
-            const int maxTrainingSize = numberOfSeasonsInTraining * seasonalitySize;
+            const int SeasonalitySize = 5;
+            const int TrainingSeasons = 5;
+            const int TrainingSize = SeasonalitySize * TrainingSeasons;
 
             var data = File
                 .ReadAllLines("training_data/maindoorstates.csv")
@@ -48,16 +43,13 @@ namespace MLNetEventAnomaly.Predictors
                 .Select(row => new SsaChangePointPredictorData((int) row.Date.DayOfWeek, row.Date.Hour, row.Value))
                 .ToList();
 
-            _timeSeriesPredictionFunction = new SsaChangePointEstimator(_ml, new SsaChangePointDetector.Arguments()
-                {
-                    Confidence = 95,
-                    Source = nameof(SsaChangePointPredictorData.DoorOpenings),
-                    Name = nameof(SsaChangePointPredictorPrediction.Change),
-                    ChangeHistoryLength = changeHistorySize,
-                    TrainingWindowSize = maxTrainingSize,
-                    SeasonalWindowSize = seasonalitySize
-                })
-                .Fit(_ml.CreateStreamingDataView(data))
+            var dataView = _ml.Data.LoadFromEnumerable(data);
+
+            var inputColumnName = nameof(SsaChangePointPredictorData.DoorOpenings);
+            var outputColumnName = nameof(SsaChangePointPredictorPrediction.Change);
+
+            _timeSeriesPredictionFunction = _ml.Transforms.DetectChangePointBySsa(outputColumnName, inputColumnName, 95, 8, TrainingSize, SeasonalitySize + 1)
+                .Fit(dataView)
                 .CreateTimeSeriesPredictionFunction<SsaChangePointPredictorData, SsaChangePointPredictorPrediction>(_ml);
         }
 
